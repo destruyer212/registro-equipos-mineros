@@ -101,6 +101,7 @@ test('Compose publica, conserva PostgreSQL y restaura la versión previa ante un
   const manifest = await json(`${web}/manifest.webmanifest`);
   assert.equal(manifest.display, 'standalone');
   assert.equal(manifest.start_url, '/');
+  assert.deepEqual(manifest.shortcuts.map(({ url }) => url), ['/?vista=flota', '/?vista=mantenimiento']);
   for (const icon of manifest.icons) {
     const response = await fetch(`${web}${icon.src}`);
     assert.equal(response.status, 200);
@@ -111,6 +112,11 @@ test('Compose publica, conserva PostgreSQL y restaura la versión previa ante un
   assert.equal(worker.status, 200);
   assert.match(worker.headers.get('cache-control'), /no-cache/);
   assert.match(await worker.text(), /\/assets\/.+\.js/);
+  if (process.env.TEST_PWA_BROWSER === 'true') {
+    result = run(process.execPath, ['--test', 'frontend/test/pwa.browser.test.mjs'], root, { ...testEnv, TEST_WEB_URL: web });
+    assert.equal(result.status, 0, result.output);
+    t.diagnostic(result.stdout);
+  }
 
   const { data: equipment } = await json(`${api}/api/v1/equipment`, {
     method: 'POST',

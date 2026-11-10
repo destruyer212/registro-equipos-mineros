@@ -5,8 +5,8 @@ import {
   ClipboardList, Ellipsis, Gauge, History, LayoutDashboard, Pencil, Plus, Search,
   ShieldCheck, Truck, Wrench, X, Trash2, Layers3, Drill,
 } from 'lucide-react';
-import { api, apiDocsUrl } from './api.js';
-import { InstallApp, useAppUpdate } from './pwa.jsx';
+import { api, apiDocsUrl, ApiUnavailableError } from './api.js';
+import { InstallApp, usePwa } from './pwa.jsx';
 import './styles.css';
 
 const number = new Intl.NumberFormat('es-PE');
@@ -19,9 +19,10 @@ const typeDetails = {
 };
 const views = [
   { id: 'overview', title: 'Vista general', icon: LayoutDashboard },
-  { id: 'fleet', title: 'Flota de equipos', icon: Truck },
-  { id: 'maintenance', title: 'Mantenimiento', icon: Wrench },
+  { id: 'fleet', slug: 'flota', title: 'Flota de equipos', icon: Truck },
+  { id: 'maintenance', slug: 'mantenimiento', title: 'Mantenimiento', icon: Wrench },
 ];
+const emptyFilters = { search: '', type: '', status: 'all' };
 const metrics = [
   { id: 'all', title: 'Equipos registrados', icon: Truck, caption: 'En el inventario activo' },
   { id: 'operational', title: 'Operativos', icon: CircleCheck, caption: 'Dentro del ciclo previsto' },
@@ -29,6 +30,11 @@ const metrics = [
   { id: 'due', title: 'Requieren mantenimiento', icon: Wrench, caption: 'Alcanzaron su intervalo' },
 ];
 const snapshotKey = `minacontrol:inventory:v1:${apiDocsUrl}`;
+
+function viewFromUrl() {
+  const slug = new URLSearchParams(window.location.search).get('vista');
+  return views.find((view) => view.slug === slug)?.id || 'overview';
+}
 
 function readSnapshot() {
   try {
@@ -129,7 +135,7 @@ function EquipmentTable({ items, types, filters, updateFilters, onOpen, loading,
           <p>{view === 'maintenance' ? 'Selecciona un equipo para consultar su historial o registrar un servicio.' : 'Consulta el horómetro y el estado de cada unidad.'}</p></div>
       </div>
       <div className="filters">
-        <label className="search"><Search size={18} /><input value={search} placeholder="Buscar por código o tipo…"
+        <label className="search"><Search size={18} /><input value={search} placeholder="Buscar por código o tipo…" enterKeyHint="search"
           onChange={(event) => updateFilters({ search: event.target.value })} aria-label="Buscar por código o tipo" /></label>
         <label className="select"><select value={type} onChange={(event) => updateFilters({ type: event.target.value })} aria-label="Filtrar por tipo">
           <option value="">Todos los tipos</option>{types.map((entry) => <option value={entry.code} key={entry.code}>{entry.name}</option>)}
@@ -250,10 +256,11 @@ function EquipmentDialog({ mode, item, types, offline, onMode, onClose, onSave }
         <button className="primary" onClick={() => change('service')}><Wrench size={16} /> Registrar servicio</button></div>}
     </div> : <form className="dialog-body" key={mode} onSubmit={submit}>
       {mode === 'add' || mode === 'edit' ? <>
-        <label>Código del equipo<input autoFocus name="code" required minLength="2" maxLength="24" pattern="[A-Za-z0-9][A-Za-z0-9\-]{1,23}" placeholder="Ej. CAM-103" defaultValue={item?.code} /></label>
+        <label>Código del equipo<input autoFocus name="code" autoCapitalize="characters" autoCorrect="off" spellCheck={false}
+          required minLength="2" maxLength="24" pattern="[A-Za-z0-9][A-Za-z0-9\-]{1,23}" placeholder="Ej. CAM-103" defaultValue={item?.code} /></label>
         <label>Tipo de equipo<select name="type" required defaultValue={item?.type || ''}><option value="" disabled>Selecciona un tipo</option>
           {types.map(({ code, name, intervalHours }) => <option key={code} value={code}>{name} · servicio cada {intervalHours} h</option>)}</select></label>
-        <label>Horómetro (horas)<input name="hours" type="number" required min={item?.hours || 0} max="1000000" step="1" placeholder="0" defaultValue={item?.hours} /></label>
+        <label>Horómetro (horas)<input name="hours" type="number" inputMode="numeric" required min={item?.hours || 0} max="1000000" step="1" placeholder="0" defaultValue={item?.hours} /></label>
       </> : mode === 'service' ? <>
         <p>El servicio quedará registrado para <strong>{item.code}</strong> a las <strong>{number.format(item.hours)} h</strong>. Su nuevo ciclo empieza con esta lectura.</p>
         <label>Notas del servicio <span>(opcional)</span><textarea autoFocus name="notes" maxLength="500" rows="3" placeholder="Ej. Se revisó el sistema hidráulico." /></label>
@@ -267,49 +274,71 @@ function EquipmentDialog({ mode, item, types, offline, onMode, onClose, onSave }
 }
 
 function App() {
-  const [view, setView] = useState('overview');
-  const [filters, setFilters] = useState({ search: '', type: '', status: 'all' });
+  const [view, setView] = useState(viewFromUrl);
+  const [filters, setFilters] = useState(emptyFilters);
   const [inventory, setInventory] = useState({ items: [], types: [], loading: true, problem: '' });
+  const [snapshotStored, setSnapshotStored] = useState(() => Boolean(readSnapshot()));
   const [attempt, setAttempt] = useState(0);
   const [modal, setModal] = useState(null);
   const [notice, setNotice] = useState('');
   const table = useRef(null);
+  const inventoryRevision = useRef(0);
   const item = inventory.items.find(({ id }) => id === modal?.id);
-  const updateApp = useAppUpdate();
+  const pwa = usePwa();
   const offline = Boolean(inventory.offlineAt);
 
   useEffect(() => {
     const controller = new AbortController();
+    const revision = inventoryRevision.current;
+    const current = () => !controller.signal.aborted && revision === inventoryRevision.current;
     const request = navigator.onLine
       ? Promise.all([api.list(controller.signal), api.types(controller.signal)])
       : Promise.reject(new Error('No hay conexión para cargar el inventario.'));
     request
-      .then(([items, types]) => setInventory({ items, types, loading: false, problem: '' }))
+      .then(([items, types]) => {
+        if (current()) setInventory({ items, types, savedAt: Date.now(), loading: false, problem: '' });
+      })
       .catch((error) => {
-        if (controller.signal.aborted) return;
-        const snapshot = readSnapshot();
-        setInventory(snapshot
-          ? { items: snapshot.items, types: snapshot.types, loading: false, problem: '', offlineAt: snapshot.savedAt }
-          : { items: [], types: [], loading: false, problem: error.message });
+        if (!current()) return;
+        const stored = readSnapshot();
+        setInventory((previous) => {
+          const snapshot = (stored?.savedAt ?? 0) > (previous.savedAt ?? 0) ? stored : previous;
+          return snapshot.savedAt
+            ? { ...snapshot, loading: false, problem: '', offlineAt: snapshot.savedAt }
+            : { items: [], types: [], loading: false, problem: error.message };
+        });
       });
     return () => controller.abort();
   }, [attempt]);
 
   useEffect(() => {
     const refresh = () => setAttempt((previous) => previous + 1);
+    const resume = () => { if (document.visibilityState === 'visible') refresh(); };
+    const onBack = () => {
+      setView(viewFromUrl());
+      setFilters(emptyFilters);
+      setModal(null);
+    };
     window.addEventListener('online', refresh);
     window.addEventListener('offline', refresh);
+    window.addEventListener('popstate', onBack);
+    document.addEventListener('visibilitychange', resume);
     return () => {
       window.removeEventListener('online', refresh);
       window.removeEventListener('offline', refresh);
+      window.removeEventListener('popstate', onBack);
+      document.removeEventListener('visibilitychange', resume);
     };
   }, []);
 
   useEffect(() => {
-    if (inventory.loading || inventory.problem || inventory.offlineAt) return;
-    const { items, types } = inventory;
+    const { items, types, savedAt } = inventory;
+    if (!savedAt) return;
     try {
-      localStorage.setItem(snapshotKey, JSON.stringify({ items, types, savedAt: Date.now() }));
+      if ((readSnapshot()?.savedAt ?? 0) < savedAt) {
+        localStorage.setItem(snapshotKey, JSON.stringify({ items, types, savedAt }));
+      }
+      setSnapshotStored(true);
     } catch {
       // The online experience works without a local snapshot.
     }
@@ -322,33 +351,45 @@ function App() {
   }, [notice]);
 
   function selectView(next) {
+    const url = new URL(window.location.href);
+    const slug = views.find(({ id }) => id === next)?.slug;
+    if (slug) url.searchParams.set('vista', slug);
+    else url.searchParams.delete('vista');
+    if (url.href !== window.location.href) window.history.pushState(null, '', url);
     setView(next);
-    setFilters({ search: '', type: '', status: 'all' });
+    setFilters(emptyFilters);
     window.scrollTo(0, 0);
   }
 
   function filterByStatus(status) {
     setFilters({ search: '', type: '', status });
     const motion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    table.current?.scrollIntoView({ behavior: motion ? 'instant' : 'smooth', block: 'start' });
+    table.current?.scrollIntoView({ behavior: motion ? 'auto' : 'smooth', block: 'start' });
   }
 
   async function save(mode, selected, values) {
     if (offline || !navigator.onLine) throw new Error('Conéctate para guardar cambios.');
     let result;
-    if (mode === 'delete') {
-      await api.remove(selected.id);
-    } else if (mode === 'service') {
-      ({ equipment: result } = await api.maintain(selected.id, { notes: String(values.get('notes')) }));
-    } else {
-      const payload = { code: String(values.get('code')), type: String(values.get('type')), hours: Number(values.get('hours')) };
-      result = mode === 'add' ? await api.create(payload) : await api.update(selected.id, payload);
+    try {
+      if (mode === 'delete') {
+        await api.remove(selected.id);
+      } else if (mode === 'service') {
+        ({ equipment: result } = await api.maintain(selected.id, { notes: String(values.get('notes')) }));
+      } else {
+        const payload = { code: String(values.get('code')), type: String(values.get('type')), hours: Number(values.get('hours')) };
+        result = mode === 'add' ? await api.create(payload) : await api.update(selected.id, payload);
+      }
+    } catch (error) {
+      if (error instanceof ApiUnavailableError) setAttempt((previous) => previous + 1);
+      throw error;
     }
+    inventoryRevision.current += 1;
+    const savedAt = Date.now();
     setInventory((current) => {
       const items = current.items.filter(({ id }) => id !== selected?.id);
       if (result) items.push(result);
       items.sort((a, b) => a.code.localeCompare(b.code));
-      return { ...current, items };
+      return { ...current, items, savedAt, offlineAt: current.offlineAt ? savedAt : undefined };
     });
     setNotice(mode === 'delete' ? 'Equipo eliminado del inventario.' : mode === 'service' ? 'Servicio registrado. Nuevo ciclo iniciado.' : 'Equipo guardado.');
     setModal(mode === 'service' ? { mode: 'detail', id: selected.id } : null);
@@ -367,14 +408,14 @@ function App() {
         <main>
           <div className="page-heading"><div><span className="section-label"><Gauge size={14} /> MONITOREO DE ACTIVOS</span>
             <h1>{heading}</h1><p>Gestiona el inventario y el mantenimiento de tu flota minera.</p></div>
-            <div className="page-actions"><InstallApp />
+            <div className="page-actions"><InstallApp offlineReady={pwa.ready && snapshotStored} />
               <button className="primary add-button" disabled={offline || inventory.loading || Boolean(inventory.problem)} onClick={() => setModal({ mode: 'add' })}><Plus size={19} /> Nuevo equipo</button>
             </div>
           </div>
           {offline && <div className="app-banner" role="status"><div><strong>Inventario sin conexión</strong><p>Última copia guardada el {date.format(inventory.offlineAt)}.</p></div>
             <button className="secondary" onClick={() => setAttempt((previous) => previous + 1)}>Reconectar</button></div>}
-          {updateApp && !modal && !offline && <div className="app-banner"><div><strong>Actualización disponible</strong><p>Instala la nueva versión de MinaControl.</p></div>
-            <button className="secondary" onClick={updateApp}>Actualizar</button></div>}
+          {pwa.update && !modal && !offline && <div className="app-banner"><div><strong>Actualización disponible</strong><p>Instala la nueva versión de MinaControl.</p></div>
+            <button className="secondary" disabled={pwa.updating} onClick={pwa.update}>{pwa.updating ? 'Actualizando…' : 'Actualizar'}</button></div>}
           {view === 'overview' && <Overview list={inventory.items} loading={inventory.loading || Boolean(inventory.problem)} onFilter={filterByStatus} />}
           <EquipmentTable items={inventory.items} types={inventory.types} filters={filters}
             updateFilters={(changes) => setFilters((current) => ({ ...current, ...changes }))}

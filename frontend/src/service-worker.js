@@ -4,7 +4,7 @@ const cacheName = prefix + version;
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(cacheName).then((cache) =>
-    cache.addAll(files.map((file) => new Request(file, { cache: 'reload' }))),
+    cache.addAll(files.map((file) => new Request(new URL(file, self.location.origin), { cache: 'reload' }))),
   ));
 });
 
@@ -26,13 +26,17 @@ self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET' || url.origin !== self.location.origin) return;
   if (event.request.mode === 'navigate' && url.pathname === '/') {
     event.respondWith((async () => {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 4500);
       try {
-        const response = await fetch(event.request, { signal: AbortSignal.timeout(4500) });
+        const response = await fetch(event.request, { signal: controller.signal });
         if (response.ok) return response;
       } catch {
         // Open the matching app shell when the network is unavailable.
+      } finally {
+        clearTimeout(timer);
       }
-      return (await caches.open(cacheName)).match('/');
+      return (await (await caches.open(cacheName)).match('/')) || Response.error();
     })());
   } else if (files.includes(url.pathname) && url.pathname !== '/') {
     event.respondWith((async () => {

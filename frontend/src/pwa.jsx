@@ -1,10 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
-import { Download, X } from 'lucide-react';
+import { CheckCircle2, Download, Share, Wifi, X } from 'lucide-react';
 
 const supportsApp = import.meta.env.PROD && window.isSecureContext && 'serviceWorker' in navigator;
 
-export function useAppUpdate() {
+export function usePwa() {
   const [worker, setWorker] = useState(null);
+  const [ready, setReady] = useState(() => supportsApp && Boolean(navigator.serviceWorker.controller));
+  const [updating, setUpdating] = useState(false);
+  const reloadForUpdate = useRef(false);
   useEffect(() => {
     if (!supportsApp) return;
     const serviceWorker = navigator.serviceWorker;
@@ -13,7 +16,14 @@ export function useAppUpdate() {
     let active = true;
 
     function checkWaiting() {
-      if (active && serviceWorker.controller && registration.waiting) setWorker(registration.waiting);
+      if (!active) return;
+      setReady(Boolean(serviceWorker.controller));
+      setWorker(serviceWorker.controller ? registration?.waiting ?? null : null);
+    }
+
+    function controllerChanged() {
+      if (reloadForUpdate.current) window.location.reload();
+      else checkWaiting();
     }
 
     function watchInstall() {
@@ -22,6 +32,7 @@ export function useAppUpdate() {
       installing?.addEventListener('statechange', checkWaiting);
     }
 
+    serviceWorker.addEventListener('controllerchange', controllerChanged);
     serviceWorker.register('/sw.js', { updateViaCache: 'none' }).then((result) => {
       if (!active) return;
       registration = result;
@@ -32,24 +43,28 @@ export function useAppUpdate() {
 
     return () => {
       active = false;
+      serviceWorker.removeEventListener('controllerchange', controllerChanged);
       registration?.removeEventListener('updatefound', watchInstall);
       installing?.removeEventListener('statechange', checkWaiting);
     };
   }, []);
 
-  return worker && (() => {
-    navigator.serviceWorker.addEventListener('controllerchange', () => window.location.reload(), { once: true });
+  const update = worker && (() => {
+    reloadForUpdate.current = true;
+    setUpdating(true);
     worker.postMessage('ACTIVATE_UPDATE');
   });
+  return { ready, update, updating };
 }
 
-export function InstallApp() {
+export function InstallApp({ offlineReady }) {
   const [prompt, setPrompt] = useState(null);
   const [installed, setInstalled] = useState(() =>
     window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true);
   const dialog = useRef(null);
   const appleMobile = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
     (/Mac/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+  const android = /Android/.test(navigator.userAgent);
 
   useEffect(() => {
     if (!supportsApp) return;
@@ -90,9 +105,21 @@ export function InstallApp() {
         <button className="icon-button" aria-label="Cerrar" onClick={() => dialog.current.close()}><X size={22} /></button>
       </div>
       <div className="dialog-body">
-        <p>{appleMobile
-          ? 'En Safari, toca Compartir y elige Añadir a pantalla de inicio.'
-          : 'Abre el menú de tu navegador y busca Instalar aplicación o Añadir a pantalla de inicio. En Chrome y Edge también puede aparecer un icono de instalación en la barra de direcciones.'}</p>
+        <div className="install-device">{appleMobile ? <Share size={18} /> : <Download size={18} />}
+          <strong>{appleMobile ? 'iPhone y iPad' : android ? 'Android' : 'Instalación desde el navegador'}</strong>
+        </div>
+        <ol className="install-steps">
+          <li>{appleMobile ? 'Abre este portal en Safari y toca Compartir.' : 'Abre el menú de tu navegador.'}</li>
+          <li>{appleMobile ? 'Elige Añadir a pantalla de inicio y confirma con Añadir.' :
+            'Elige Instalar aplicación o Añadir a pantalla de inicio y confirma.'}</li>
+          <li>Abre MinaControl desde el icono de la aplicación.</li>
+        </ol>
+        <div className="install-status">
+          {offlineReady ? <CheckCircle2 size={18} /> : <Wifi size={18} />}
+          <div><strong>{offlineReady ? 'Lista para consultar sin conexión' : 'Prepara la consulta sin conexión'}</strong>
+            <p>{offlineReady ? 'El inventario ya está guardado en este navegador.' : 'Mantén la app abierta con conexión hasta que termine de cargar el inventario.'}</p>
+          </div>
+        </div>
       </div>
     </dialog>
   </>;

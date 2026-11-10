@@ -16,9 +16,9 @@ En la primera ejecución crea un `.env` local con una contraseña aleatoria y ac
 
 ### Aplicación instalable
 
-El portal de flota se puede instalar desde **Instalar app** en navegadores compatibles. En iPhone, usa **Compartir → Añadir a pantalla de inicio**. La instalación y el modo sin conexión funcionan en HTTPS y se pueden ensayar en `localhost`.
+El portal de flota se puede instalar desde **Instalar app**. En Android, confirma el aviso del navegador o usa su menú de instalación. En iPhone, abre la web en Safari y usa **Compartir → Añadir a pantalla de inicio**. En navegadores que muestran accesos directos de apps instaladas, el icono ofrece **Flota** y **Mantenimiento**. La instalación y el modo sin conexión funcionan en HTTPS y se pueden ensayar en `localhost`.
 
-Tras abrir la aplicación y cargar el inventario con conexión, puedes consultar la última copia guardada en ese dispositivo. El modo sin conexión es de lectura y muestra cuándo se guardó la copia. Registrar, editar y consultar el historial requiere una API disponible. El service worker guarda la interfaz y deja que el navegador solicite las versiones nuevas de la web.
+Tras abrir la aplicación y cargar el inventario con conexión, el diálogo de instalación indica cuándo está lista para consultarse sin red. El modo sin conexión es de lectura y muestra cuándo se guardó la copia. Registrar, editar y consultar el historial requiere una API disponible. Al recuperar la red o regresar a la app, MinaControl intenta actualizar el inventario. Los enlaces a Flota y Mantenimiento conservan la sección al recargar y al actualizar la PWA.
 
 ```text
 npm ci --prefix backend
@@ -96,6 +96,14 @@ node --test tests/deploy.integration.test.mjs
 ```
 
 La prueba de despliegue verifica Swagger, el flujo REST, la persistencia entre versiones, una migración que falla dentro de una transacción, la restauración de las imágenes previas ante una API defectuosa y un despliegue posterior con la corrección.
+
+En GitHub Actions, Playwright prueba perfiles móviles de Android en Chromium y de iPhone en WebKit. Abre un acceso directo, comprueba que el inventario encaje en 320 px, recarga con la red desactivada y verifica la reconexión. Para repetirlo con el portal local activo:
+
+```text
+npm ci --prefix frontend
+npm exec --prefix frontend -- playwright install chromium webkit
+node --test frontend/test/pwa.browser.test.mjs
+```
 
 ## Entrega
 

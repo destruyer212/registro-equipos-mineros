@@ -29,5 +29,12 @@ jobs:
         run: npm ci --prefix backend --no-audit --no-fund
       - name: Probar reglas y validación
         run: node --test backend/test/equipment.unit.test.js
-      - name: Desplegar y provocar fallos reales con PostgreSQL
+      - name: Preparar navegadores móviles
+        working-directory: frontend
+        run: |
+          npm ci --no-audit --no-fund
+          npx playwright install --with-deps --only-shell chromium webkit
+      - name: Probar PWA móvil, despliegue y rollback
+        env:
+          TEST_PWA_BROWSER: 'true'
         run: node --test tests/deploy.integration.test.mjs
