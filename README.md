@@ -12,7 +12,7 @@ Requiere Node.js 24, Docker en ejecución y Docker Compose v2 o posterior. Desde
 node deploy.mjs --local
 ```
 
-En la primera ejecución crea un `.env` local con una contraseña aleatoria y activa nueve equipos de demostración. Abre [el portal](http://localhost:4173) y verifica [el estado de la API](http://localhost:4180/health). Si necesitas otros puertos, configúralos en `.env` antes de ejecutar el comando.
+En la primera ejecución crea un `.env` local con una contraseña aleatoria y activa seis equipos de demostración. Abre [el portal](http://localhost:4173) y verifica [el estado de la API](http://localhost:4180/health). Si necesitas otros puertos, configúralos en `.env` antes de ejecutar el comando.
 
 ### Aplicación instalable
 
