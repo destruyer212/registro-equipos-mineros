@@ -6,10 +6,12 @@ export function runtimeDocumentation(env = process.env) {
     local: 'Local · Docker Compose',
     production: 'Producción · API pública',
   };
-  const environment = environments[env.API_ENVIRONMENT] || 'Desarrollo · servidor actual';
+  const environment = environments[env.API_ENVIRONMENT] ||
+    (env.RENDER === 'true' ? 'Producción · Render' : 'Desarrollo · servidor actual');
+  const publicUrl = env.API_PUBLIC_URL || env.RENDER_EXTERNAL_URL;
   let url = '/';
-  if (env.API_PUBLIC_URL) {
-    const api = new URL(env.API_PUBLIC_URL);
+  if (publicUrl) {
+    const api = new URL(publicUrl);
     if (!['http:', 'https:'].includes(api.protocol) || api.username || api.password ||
         api.pathname !== '/' || api.search || api.hash) {
       throw new Error('API_PUBLIC_URL debe ser un origen HTTP o HTTPS sin credenciales ni ruta.');

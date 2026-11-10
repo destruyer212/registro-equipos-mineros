@@ -20,6 +20,10 @@ const pwa = {
         fileName: 'sw.js',
         source: worker.replace('__PRECACHE__', JSON.stringify({ version: randomUUID(), files })),
       });
+      const release = process.env.MINACONTROL_RELEASE;
+      if (release) {
+        this.emitFile({ type: 'asset', fileName: 'release.json', source: JSON.stringify({ release }) });
+      }
     },
   },
 };

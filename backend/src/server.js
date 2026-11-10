@@ -26,7 +26,7 @@ app.get('/openapi.json', (_request, response) => response.json(specification));
 app.use('/docs', express.static(docsDirectory), swaggerUi.serveFiles());
 
 app.get('/health', async (_request, response) => {
-  const release = process.env.RELEASE_ID || 'dev';
+  const release = process.env.RELEASE_ID || process.env.RENDER_GIT_COMMIT || 'dev';
   try {
     await pool.query('SELECT 1 FROM equipment_types LIMIT 1');
     response.json({ status: 'ok', database: 'ok', release });

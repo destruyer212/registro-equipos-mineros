@@ -3,6 +3,9 @@ dist/
 .env
 .env.*
 !.env.example
+!.env.hosted.example
+.vercel/
+.deploy-hosted.lock/
 .deploy.lock/
 .deploy-state/
 coverage/

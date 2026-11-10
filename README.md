@@ -64,7 +64,24 @@ Navegador ──HTTPS──► Web React (Caddy)
 
 Para crear un equipo se envían `code`, `type` y `hours`. Los tipos son `truck`, `excavator` y `drill`. El servicio acepta `notes` opcional. Los errores de API tienen el formato `{ "error": { "code": "...", "message": "..." } }`.
 
-## Despliegue público
+## Despliegue público en Vercel y Render
+
+La web estática se publica en Vercel Hobby. Render aloja la API Docker y una base PostgreSQL privada. El plan gratuito de Render suspende la API tras 15 minutos sin tráfico y el primer acceso puede tardar cerca de un minuto. Render Postgres Free vence a los 30 días. [Límites de Render Free](https://render.com/docs/free)
+
+1. Crea un proyecto Hobby en Vercel. Vincula la carpeta `frontend` con `vercel link --project NOMBRE --yes`. Usa un proyecto creado para despliegues desde la CLI.
+2. En Render, crea un **Blueprint** desde este repositorio en `main`. Usa `render.yaml` y confirma que la API y la base figuran como **Free**. Escribe el origen HTTPS de Vercel en `WEB_ORIGIN`. El Blueprint conecta la base por la red privada y activa los datos de demostración.
+3. En la raíz del repositorio, copia `.env.hosted.example` a `.env.hosted`. Completa `VERCEL_URL` y `RENDER_URL` con los orígenes públicos. Copia el **Deploy Hook** de la API desde **Settings** a `RENDER_DEPLOY_HOOK`. Ese archivo se guarda localmente.
+4. Con Vercel CLI autenticado, sube el cambio a `main` y ejecuta desde la raíz del repositorio en tu PC:
+
+```text
+node deploy-hosted.mjs
+```
+
+El comando prepara el frontend, pide a Render desplegar el mismo commit y espera a que termine la migración. Después activa la web y verifica las dos URLs públicas, el commit y el acceso al inventario desde Vercel. Si una publicación falla después del primer despliegue verificado, intenta recuperar esa versión y devuelve código `1`. El archivo local `.deploy-state/hosted.json` registra la última versión verificada. Las migraciones ya aplicadas deben seguir siendo compatibles con esa versión.
+
+Para grabar, abre la URL pública y comprueba `/health` unos minutos antes. Puedes dejar que termine el comando y mostrar su resultado junto con el cambio visible en la web.
+
+## Despliegue público en un servidor propio
 
 1. Publica este código en GitHub y clona el repositorio en un servidor Linux con Node.js 24, Git y Docker Compose. La rama de trabajo del servidor debe seguir su rama remota.
 2. Apunta dos nombres DNS al servidor, uno para la web y otro para la API. Abre TCP 80 y 443 para que Caddy pueda emitir los certificados HTTPS.
