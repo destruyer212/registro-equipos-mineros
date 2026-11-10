@@ -14,6 +14,12 @@ node deploy.mjs --local
 
 En la primera ejecución crea un `.env` local con una contraseña aleatoria y activa seis equipos de demostración. Abre [el portal](http://localhost:4173) y verifica [el estado de la API](http://localhost:4180/health). Si necesitas otros puertos, configúralos en `.env` antes de ejecutar el comando.
 
+### Aplicación instalable
+
+El portal de flota se puede instalar desde **Instalar app** en navegadores compatibles. En iPhone, usa **Compartir → Añadir a pantalla de inicio**. La instalación y el modo sin conexión funcionan en HTTPS y se pueden ensayar en `localhost`.
+
+Tras abrir la aplicación y cargar el inventario con conexión, puedes consultar la última copia guardada en ese dispositivo. El modo sin conexión es de lectura y muestra cuándo se guardó la copia. Registrar, editar y consultar el historial requiere una API disponible. El service worker guarda la interfaz y deja que el navegador solicite las versiones nuevas de la web.
+
 ```text
 npm ci --prefix backend
 npm --prefix backend test
@@ -36,7 +42,7 @@ El horómetro es acumulativo, entero y no decreciente. Registrar un servicio usa
 
 ## Arquitectura
 
-Abre [Swagger UI](http://localhost:4180/docs/) para consultar y probar las rutas con **Try it out**. La [especificación OpenAPI](http://localhost:4180/openapi.json) se sirve como JSON. En producción, ambas rutas quedan en el dominio de la API. Las operaciones de escritura modifican la base de demostración.
+Abre el [portal de desarrolladores](http://localhost:4180/docs/) para consultar y probar las rutas con **Try it out**. La [especificación OpenAPI](http://localhost:4180/openapi.json) se sirve como JSON. **Servers** muestra el origen de API del entorno activo. Docker Compose lo configura desde el puerto local o el dominio público del despliegue. El estado y la versión mostrados se consultan en `/health`. Las operaciones de escritura modifican la base del entorno seleccionado.
 
 ```text
 Navegador ──HTTPS──► Web React (Caddy)

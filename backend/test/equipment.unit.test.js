@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { equipmentInput, equipmentUpdate, maintenanceInput, withCycle } from '../src/equipment.js';
+import { createOpenapi, runtimeDocumentation } from '../src/openapi.js';
 
 test('el ciclo parte del último servicio y cambia de estado en los límites exactos', () => {
   const equipment = { lastMaintenanceHours: 750, intervalHours: 500 };
@@ -16,6 +17,18 @@ test('el ciclo parte del último servicio y cambia de estado en los límites exa
       ...equipment, hours, cycleHours, remainingHours, status,
     });
   }
+});
+
+test('OpenAPI usa el origen público configurado y descarta URLs con credenciales', () => {
+  const runtime = runtimeDocumentation({
+    API_PUBLIC_URL: 'https://api.mina.example',
+    API_ENVIRONMENT: 'production',
+    WEB_ORIGIN: 'https://mina.example',
+  });
+  const spec = createOpenapi(runtime);
+  assert.deepEqual(spec.servers, [{ url: 'https://api.mina.example', description: 'Producción · API pública' }]);
+  assert.equal(spec['x-minacontrol'].webUrl, 'https://mina.example');
+  assert.throws(() => runtimeDocumentation({ API_PUBLIC_URL: 'https://user:pass@api.mina.example' }), /API_PUBLIC_URL/);
 });
 
 test('el contrato normaliza códigos y valida lecturas, tipos y notas', () => {

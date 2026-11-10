@@ -1,5 +1,7 @@
 services:
   api:
+    environment:
+      API_ENVIRONMENT: local
     ports:
       - "127.0.0.1:${LOCAL_API_PORT:-4180}:3000"
   web:

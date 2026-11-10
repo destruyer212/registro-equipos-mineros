@@ -89,9 +89,28 @@ test('Compose publica, conserva PostgreSQL y restaura la versión previa ante un
   assert.equal(result.status, 0, result.output);
   const swagger = await json(`${api}/openapi.json`);
   assert.equal(swagger.openapi, '3.1.0');
+  assert.deepEqual(swagger.servers, [{ url: api, description: 'Local · Docker Compose' }]);
+  assert.equal(swagger['x-minacontrol'].webUrl, web);
   assert.ok(swagger.paths['/api/v1/equipment/{id}/maintenance'].post);
   const docs = await fetch(`${api}/docs/`);
-  assert.match(await docs.text(), /SwaggerUIBundle|swagger-ui-bundle/);
+  assert.match(await docs.text(), /Portal de desarrolladores/);
+  const bundle = await fetch(`${api}/docs/swagger-ui-bundle.js`);
+  assert.equal(bundle.status, 200);
+  await bundle.body.cancel();
+
+  const manifest = await json(`${web}/manifest.webmanifest`);
+  assert.equal(manifest.display, 'standalone');
+  assert.equal(manifest.start_url, '/');
+  for (const icon of manifest.icons) {
+    const response = await fetch(`${web}${icon.src}`);
+    assert.equal(response.status, 200);
+    assert.match(response.headers.get('content-type'), /image\/png/);
+    await response.body.cancel();
+  }
+  const worker = await fetch(`${web}/sw.js`);
+  assert.equal(worker.status, 200);
+  assert.match(worker.headers.get('cache-control'), /no-cache/);
+  assert.match(await worker.text(), /\/assets\/.+\.js/);
 
   const { data: equipment } = await json(`${api}/api/v1/equipment`, {
     method: 'POST',

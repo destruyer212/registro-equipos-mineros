@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#13291f">
+  <title>MinaControl | Portal de desarrolladores</title>
+  <link rel="icon" href="./mina.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./swagger-ui.css">
+  <link rel="stylesheet" href="./portal.css">
+  <script defer src="./swagger-ui-bundle.js"></script>
+  <script defer src="./portal.js"></script>
+</head>
+<body>
+  <header class="masthead">
+    <div class="frame nav">
+      <a class="brand" href="/docs/"><img src="./mina.svg" width="38" height="38" alt="">
+        <span><strong>MinaControl</strong><small>PORTAL DE DESARROLLADORES</small></span>
+      </a>
+      <nav aria-label="Enlaces de desarrollador">
+        <a href="/openapi.json">OpenAPI <span aria-hidden="true">↗</span></a>
+        <a href="#web" id="web-link" hidden>Portal de flota <span aria-hidden="true">↗</span></a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="frame">
+    <section class="hero" aria-labelledby="title">
+      <div class="hero-copy">
+        <p class="eyebrow"><span></span> REFERENCIA DE API <b id="spec-version">V1</b></p>
+        <h1 id="title">MinaControl API</h1>
+        <p>Gestiona la flota minera, consulta el horómetro y registra los servicios de mantenimiento desde una API REST.</p>
+        <div class="hero-actions">
+          <a class="primary" href="#referencia">Explorar endpoints <span aria-hidden="true">↓</span></a>
+          <a class="secondary" href="/openapi.json">Ver contrato JSON <span aria-hidden="true">↗</span></a>
+        </div>
+      </div>
+      <aside class="terminal" aria-label="Ejemplo de conexión">
+        <div class="terminal-bar"><i></i><i></i><i></i><span>PRIMERA SOLICITUD</span></div>
+        <div class="terminal-body">
+          <span class="comment"># Verifica que la API y PostgreSQL respondan</span>
+          <div class="command"><code id="curl-command">curl /health</code><button type="button" id="copy-command" disabled>Copiar</button></div>
+          <pre aria-label="Ejemplo de respuesta"><span>{</span>
+  <span class="key">"status"</span>: <span class="value">"ok"</span>,
+  <span class="key">"database"</span>: <span class="value">"ok"</span>
+<span>}</span></pre>
+        </div>
+      </aside>
+    </section>
+
+    <section class="runtime" aria-label="Entorno de ejecución">
+      <div class="runtime-item"><span>ENTORNO</span><strong id="environment">Consultando configuración…</strong><code id="base-url"></code></div>
+      <div class="runtime-item"><span>ESTADO EN VIVO</span><strong class="health" id="health" data-state="checking" role="status"><i></i><span>Comprobando…</span></strong>
+        <small id="health-detail">Consulta directa a /health</small></div>
+      <div class="runtime-item"><span>VERSIÓN ACTIVA</span><code class="release" id="release">—</code><small id="release-detail">Identificador de despliegue</small></div>
+    </section>
+
+    <section class="reference" id="referencia" aria-labelledby="reference-title">
+      <div class="reference-head">
+        <div><p class="eyebrow">CONTRATO INTERACTIVO</p><h2 id="reference-title">Referencia de endpoints</h2></div>
+        <div class="reference-count" id="operation-count" hidden></div>
+      </div>
+      <p class="reference-note">Abre una operación y selecciona <strong>Try it out</strong> para ejecutarla. Las operaciones de escritura modifican los datos del entorno seleccionado.</p>
+      <p class="spec-status" id="spec-status" role="status">Cargando el contrato OpenAPI…</p>
+      <div id="swagger-ui"></div>
+    </section>
+  </main>
+  <footer class="frame footer"><strong>MinaControl</strong><span>Inventario y mantenimiento de flota</span></footer>
+</body>
+</html>

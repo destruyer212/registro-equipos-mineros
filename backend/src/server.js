@@ -1,10 +1,11 @@
 import cors from 'cors';
 import express from 'express';
 import swaggerUi from 'swagger-ui-express';
+import { fileURLToPath } from 'node:url';
 import { ZodError } from 'zod';
 import { pool } from './db.js';
 import * as equipment from './equipment.js';
-import { openapi } from './openapi.js';
+import { createOpenapi, runtimeDocumentation } from './openapi.js';
 
 if (!process.env.DATABASE_URL || !process.env.WEB_ORIGIN) {
   throw new Error('Configura DATABASE_URL y WEB_ORIGIN antes de iniciar la API.');
@@ -19,11 +20,10 @@ app.use((_request, response, next) => {
 });
 app.use(express.json({ limit: '12kb' }));
 
-app.get('/openapi.json', (_request, response) => response.json(openapi));
-app.use('/docs', swaggerUi.serve, swaggerUi.setup(null, {
-  customSiteTitle: 'MinaControl | Documentación de la API',
-  swaggerOptions: { url: '/openapi.json', validatorUrl: null },
-}));
+const specification = createOpenapi(runtimeDocumentation());
+const docsDirectory = fileURLToPath(new URL('./docs/', import.meta.url));
+app.get('/openapi.json', (_request, response) => response.json(specification));
+app.use('/docs', express.static(docsDirectory), swaggerUi.serveFiles());
 
 app.get('/health', async (_request, response) => {
   const release = process.env.RELEASE_ID || 'dev';

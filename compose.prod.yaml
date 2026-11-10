@@ -1,4 +1,8 @@
 services:
+  api:
+    environment:
+      API_ENVIRONMENT: production
+
   gateway:
     image: ${COMPOSE_PROJECT_NAME}-gateway:${IMAGE_TAG:?Configura IMAGE_TAG con deploy.mjs}
     build: ./deploy

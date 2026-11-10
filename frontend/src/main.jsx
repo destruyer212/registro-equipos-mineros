@@ -6,6 +6,7 @@ import {
   ShieldCheck, Truck, Wrench, X, Trash2, Layers3, Drill,
 } from 'lucide-react';
 import { api, apiDocsUrl } from './api.js';
+import { InstallApp, useAppUpdate } from './pwa.jsx';
 import './styles.css';
 
 const number = new Intl.NumberFormat('es-PE');
@@ -27,6 +28,16 @@ const metrics = [
   { id: 'upcoming', title: 'Próximos a servicio', icon: Clock3, caption: 'Desde el 80 % del ciclo' },
   { id: 'due', title: 'Requieren mantenimiento', icon: Wrench, caption: 'Alcanzaron su intervalo' },
 ];
+const snapshotKey = `minacontrol:inventory:v1:${apiDocsUrl}`;
+
+function readSnapshot() {
+  try {
+    const snapshot = JSON.parse(localStorage.getItem(snapshotKey));
+    if (Array.isArray(snapshot?.items) && Array.isArray(snapshot.types) && Number.isFinite(snapshot.savedAt)) return snapshot;
+  } catch {
+    // Storage may be unavailable in private browsing.
+  }
+}
 
 function Status({ status }) {
   return <span className={`status ${status}`}><i />{statusNames[status]}</span>;
@@ -44,6 +55,14 @@ function Cycle({ equipment }) {
       </div>
     </div>
   );
+}
+
+function EquipmentIdentity({ item }) {
+  const { icon: Icon, detail } = typeDetails[item.type];
+  return <>
+    <span className={`type-icon ${item.type}`}><Icon size={19} /></span>
+    <span><strong>{item.code}</strong><small>{item.typeName} · {detail}</small></span>
+  </>;
 }
 
 function Sidebar({ view, onChange }) {
@@ -116,7 +135,7 @@ function EquipmentTable({ items, types, filters, updateFilters, onOpen, loading,
           <option value="">Todos los tipos</option>{types.map((entry) => <option value={entry.code} key={entry.code}>{entry.name}</option>)}
         </select><ChevronDown size={15} /></label>
         <label className="select"><select value={status} onChange={(event) => updateFilters({ status: event.target.value })} aria-label="Filtrar por estado">
-          <option value="all">Todos los estados</option>{Object.entries(statusNames).map(([key, label]) => <option value={key} key={key}>{label}</option>)}
+          <option value="all">Estado: todos</option>{Object.entries(statusNames).map(([key, label]) => <option value={key} key={key}>{label}</option>)}
         </select><ChevronDown size={15} /></label>
       </div>
       {loading ? <p className="table-message" role="status">Consultando equipos…</p> : problem ?
@@ -125,25 +144,38 @@ function EquipmentTable({ items, types, filters, updateFilters, onOpen, loading,
           <p>{items.length ? 'Prueba con otro código o filtro.' : 'Registra un equipo para empezar a controlar sus horas.'}</p>
           {items.length > 0 && <button className="secondary" onClick={() => updateFilters({ search: '', type: '', status: 'all' })}>Limpiar filtros</button>}
         </div> :
+        <>
+        <ul className="equipment-cards" aria-label="Equipos del inventario">
+          {filtered.map((item) => (
+            <li key={item.id}>
+              <button className="equipment-link" onClick={() => onOpen(item)}>
+                <EquipmentIdentity item={item} /><ArrowRight size={17} aria-hidden="true" />
+              </button>
+              <Status status={item.status} />
+              <div className="card-readings">
+                <div><span>Horómetro</span><strong>{number.format(item.hours)} h</strong></div>
+                <div><span>Ciclo de servicio</span><Cycle equipment={item} /></div>
+              </div>
+            </li>
+          ))}
+        </ul>
         <div className="table-scroll" tabIndex="0" role="region" aria-label="Tabla de equipos">
           <table>
             <thead><tr><th scope="col">Equipo</th><th scope="col">Horómetro</th><th scope="col">Ciclo de servicio</th>
               <th scope="col">Estado</th><th scope="col"><span className="sr-only">Acciones</span></th></tr></thead>
-            <tbody>{filtered.map((item) => {
-              const { icon: Icon, detail } = typeDetails[item.type];
-              return <tr key={item.id}>
+            <tbody>{filtered.map((item) => (
+              <tr key={item.id}>
                 <td><button className="equipment-link" onClick={() => onOpen(item)}>
-                  <span className={`type-icon ${item.type}`}><Icon size={19} /></span>
-                  <span><strong>{item.code}</strong><small>{item.typeName} · {detail}</small></span>
+                  <EquipmentIdentity item={item} />
                 </button></td>
                 <td className="hours">{number.format(item.hours)} <span>h</span></td>
                 <td><Cycle equipment={item} /></td>
                 <td><Status status={item.status} /></td>
                 <td><button className="icon-button" aria-label={`Ver opciones de ${item.code}`} onClick={() => onOpen(item)}><Ellipsis size={20} /></button></td>
-              </tr>;
-            })}</tbody>
+              </tr>
+            ))}</tbody>
           </table>
-        </div>}
+        </div></>}
       <div className="inventory-footer"><span>{!loading && !problem ? `Mostrando ${filtered.length} de ${items.length} equipos` : 'Inventario'}</span>
         <span><i /> Lecturas en horas</span></div>
     </section>
@@ -174,7 +206,7 @@ function HistoryPanel({ id }) {
   </section>;
 }
 
-function EquipmentDialog({ mode, item, types, onMode, onClose, onSave }) {
+function EquipmentDialog({ mode, item, types, offline, onMode, onClose, onSave }) {
   const dialog = useRef(null);
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState('');
@@ -212,10 +244,10 @@ function EquipmentDialog({ mode, item, types, onMode, onClose, onSave }) {
       <div className="detail-top"><span>{item.typeName} · {number.format(item.hours)} h acumuladas</span><Status status={item.status} /></div>
       <div className="detail-cycle"><Cycle equipment={item} />
         <span>{item.remainingHours > 0 ? `Faltan ${number.format(item.remainingHours)} h para el siguiente servicio.` : 'Alcanzó el intervalo de mantenimiento.'}</span></div>
-      <HistoryPanel key={item.id} id={item.id} />
-      <div className="dialog-actions detail-actions"><button className="icon-button danger-text" onClick={() => change('delete')} aria-label="Eliminar equipo"><Trash2 size={18} /></button>
+      {offline ? <p>El historial y las acciones de mantenimiento requieren conexión.</p> : <HistoryPanel key={item.id} id={item.id} />}
+      {!offline && <div className="dialog-actions detail-actions"><button className="icon-button danger-text" onClick={() => change('delete')} aria-label="Eliminar equipo"><Trash2 size={18} /></button>
         <button className="secondary" onClick={() => change('edit')}><Pencil size={16} /> Editar</button>
-        <button className="primary" onClick={() => change('service')}><Wrench size={16} /> Registrar servicio</button></div>
+        <button className="primary" onClick={() => change('service')}><Wrench size={16} /> Registrar servicio</button></div>}
     </div> : <form className="dialog-body" key={mode} onSubmit={submit}>
       {mode === 'add' || mode === 'edit' ? <>
         <label>Código del equipo<input autoFocus name="code" required minLength="2" maxLength="24" pattern="[A-Za-z0-9][A-Za-z0-9\-]{1,23}" placeholder="Ej. CAM-103" defaultValue={item?.code} /></label>
@@ -226,9 +258,9 @@ function EquipmentDialog({ mode, item, types, onMode, onClose, onSave }) {
         <p>El servicio quedará registrado para <strong>{item.code}</strong> a las <strong>{number.format(item.hours)} h</strong>. Su nuevo ciclo empieza con esta lectura.</p>
         <label>Notas del servicio <span>(opcional)</span><textarea autoFocus name="notes" maxLength="500" rows="3" placeholder="Ej. Se revisó el sistema hidráulico." /></label>
       </> : <p><strong>{item.code}</strong> saldrá del inventario activo. El historial se conservará en la base de datos.</p>}
-      {problem && <p role="alert" className="form-error"><AlertCircle size={17} />{problem}</p>}
+      {(problem || offline) && <p role="alert" className="form-error"><AlertCircle size={17} />{offline ? 'Conéctate para guardar cambios.' : problem}</p>}
       <div className="dialog-actions"><button type="button" className="secondary" disabled={busy} onClick={() => item ? change('detail') : onClose()}>Cancelar</button>
-        <button type="submit" className={mode === 'delete' ? 'danger' : 'primary'} disabled={busy}>{busy ? 'Guardando…' :
+        <button type="submit" className={mode === 'delete' ? 'danger' : 'primary'} disabled={busy || offline}>{busy ? 'Guardando…' :
           mode === 'service' ? 'Confirmar servicio' : mode === 'delete' ? 'Eliminar equipo' : 'Guardar equipo'}</button></div>
     </form>}
   </dialog>;
@@ -243,16 +275,45 @@ function App() {
   const [notice, setNotice] = useState('');
   const table = useRef(null);
   const item = inventory.items.find(({ id }) => id === modal?.id);
+  const updateApp = useAppUpdate();
+  const offline = Boolean(inventory.offlineAt);
 
   useEffect(() => {
     const controller = new AbortController();
-    Promise.all([api.list(controller.signal), api.types(controller.signal)])
+    const request = navigator.onLine
+      ? Promise.all([api.list(controller.signal), api.types(controller.signal)])
+      : Promise.reject(new Error('No hay conexión para cargar el inventario.'));
+    request
       .then(([items, types]) => setInventory({ items, types, loading: false, problem: '' }))
       .catch((error) => {
-        if (!controller.signal.aborted) setInventory({ items: [], types: [], loading: false, problem: error.message });
+        if (controller.signal.aborted) return;
+        const snapshot = readSnapshot();
+        setInventory(snapshot
+          ? { items: snapshot.items, types: snapshot.types, loading: false, problem: '', offlineAt: snapshot.savedAt }
+          : { items: [], types: [], loading: false, problem: error.message });
       });
     return () => controller.abort();
   }, [attempt]);
+
+  useEffect(() => {
+    const refresh = () => setAttempt((previous) => previous + 1);
+    window.addEventListener('online', refresh);
+    window.addEventListener('offline', refresh);
+    return () => {
+      window.removeEventListener('online', refresh);
+      window.removeEventListener('offline', refresh);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (inventory.loading || inventory.problem || inventory.offlineAt) return;
+    const { items, types } = inventory;
+    try {
+      localStorage.setItem(snapshotKey, JSON.stringify({ items, types, savedAt: Date.now() }));
+    } catch {
+      // The online experience works without a local snapshot.
+    }
+  }, [inventory]);
 
   useEffect(() => {
     if (!notice) return;
@@ -273,6 +334,7 @@ function App() {
   }
 
   async function save(mode, selected, values) {
+    if (offline || !navigator.onLine) throw new Error('Conéctate para guardar cambios.');
     let result;
     if (mode === 'delete') {
       await api.remove(selected.id);
@@ -293,19 +355,26 @@ function App() {
   }
 
   const heading = view === 'overview' ? 'Resumen de operaciones' : views.find(({ id }) => id === view).title;
-  const apiState = inventory.loading ? 'Conectando' : inventory.problem ? 'API sin conexión' : 'API conectada';
+  const apiState = offline ? 'Modo lectura' : inventory.loading ? 'Conectando' : inventory.problem ? 'API sin conexión' : 'API conectada';
   return (
     <div className="app-shell">
       <Sidebar view={view} onChange={selectView} />
       <div className="workspace">
         <header className="topbar">
           <span><Activity size={17} /> <strong>Centro de operaciones</strong><b>/</b>{views.find(({ id }) => id === view).title}</span>
-          <span className={`connection ${inventory.problem ? 'offline' : ''}`}><i />{apiState}</span>
+          <span className={`connection ${inventory.problem || offline ? 'offline' : ''}`}><i />{apiState}</span>
         </header>
         <main>
           <div className="page-heading"><div><span className="section-label"><Gauge size={14} /> MONITOREO DE ACTIVOS</span>
             <h1>{heading}</h1><p>Gestiona el inventario y el mantenimiento de tu flota minera.</p></div>
-            <button className="primary add-button" disabled={inventory.loading || Boolean(inventory.problem)} onClick={() => setModal({ mode: 'add' })}><Plus size={19} /> Nuevo equipo</button></div>
+            <div className="page-actions"><InstallApp />
+              <button className="primary add-button" disabled={offline || inventory.loading || Boolean(inventory.problem)} onClick={() => setModal({ mode: 'add' })}><Plus size={19} /> Nuevo equipo</button>
+            </div>
+          </div>
+          {offline && <div className="app-banner" role="status"><div><strong>Inventario sin conexión</strong><p>Última copia guardada el {date.format(inventory.offlineAt)}.</p></div>
+            <button className="secondary" onClick={() => setAttempt((previous) => previous + 1)}>Reconectar</button></div>}
+          {updateApp && !modal && !offline && <div className="app-banner"><div><strong>Actualización disponible</strong><p>Instala la nueva versión de MinaControl.</p></div>
+            <button className="secondary" onClick={updateApp}>Actualizar</button></div>}
           {view === 'overview' && <Overview list={inventory.items} loading={inventory.loading || Boolean(inventory.problem)} onFilter={filterByStatus} />}
           <EquipmentTable items={inventory.items} types={inventory.types} filters={filters}
             updateFilters={(changes) => setFilters((current) => ({ ...current, ...changes }))}
@@ -318,7 +387,7 @@ function App() {
           </footer>
         </main>
       </div>
-      {modal && <EquipmentDialog mode={modal.mode} item={item} types={inventory.types} onMode={(mode) => setModal({ ...modal, mode })}
+      {modal && (modal.mode === 'add' || item) && <EquipmentDialog mode={modal.mode} item={item} types={inventory.types} offline={offline || Boolean(inventory.problem)} onMode={(mode) => setModal({ ...modal, mode })}
         onClose={() => setModal(null)} onSave={save} />}
       <div className="toast-region" aria-live="polite">{notice && <span className="toast"><CircleCheck size={19} />{notice}</span>}</div>
     </div>

@@ -20,6 +20,7 @@ services:
     environment:
       DATABASE_URL: postgres://minacontrol:${POSTGRES_PASSWORD}@db:5432/minacontrol
       WEB_ORIGIN: ${WEB_URL:?Configura WEB_URL con deploy.mjs}
+      API_PUBLIC_URL: ${API_URL:?Configura API_URL con deploy.mjs}
       DEMO_DATA: ${DEMO_DATA:-false}
       RELEASE_ID: ${RELEASE_ID:?Configura RELEASE_ID con deploy.mjs}
     depends_on:

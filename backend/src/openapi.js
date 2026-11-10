@@ -1,6 +1,24 @@
 import { z } from 'zod';
 import { equipmentInput, equipmentUpdate, maintenanceInput } from './equipment.js';
 
+export function runtimeDocumentation(env = process.env) {
+  const environments = {
+    local: 'Local · Docker Compose',
+    production: 'Producción · API pública',
+  };
+  const environment = environments[env.API_ENVIRONMENT] || 'Desarrollo · servidor actual';
+  let url = '/';
+  if (env.API_PUBLIC_URL) {
+    const api = new URL(env.API_PUBLIC_URL);
+    if (!['http:', 'https:'].includes(api.protocol) || api.username || api.password ||
+        api.pathname !== '/' || api.search || api.hash) {
+      throw new Error('API_PUBLIC_URL debe ser un origen HTTP o HTTPS sin credenciales ni ruta.');
+    }
+    url = api.origin;
+  }
+  return { environment, url, webUrl: env.WEB_ORIGIN };
+}
+
 const ref = (name) => ({ $ref: `#/components/schemas/${name}` });
 const object = (properties) => ({ type: 'object', required: Object.keys(properties), properties });
 const array = (items) => ({ type: 'array', items });
@@ -49,14 +67,13 @@ const health = (status) => ({
   }), { status, database: status, release: 'local-demo' }),
 });
 
-export const openapi = {
+const specification = {
   openapi: '3.1.0',
   info: {
     title: 'MinaControl API',
     version: '1.0.0',
     description: 'Inventario de equipos mineros y registro de mantenimiento. Usa **Try it out** con datos de demostración. Las operaciones de escritura guardan cambios en la base de datos.',
   },
-  servers: [{ url: '/', description: 'Servidor actual' }],
   tags: [
     { name: 'Estado', description: 'Salud de la API y de PostgreSQL.' },
     { name: 'Equipos', description: 'Inventario activo y tipos de equipos.' },
@@ -149,3 +166,11 @@ export const openapi = {
     },
   },
 };
+
+export function createOpenapi(runtime) {
+  return {
+    ...specification,
+    servers: [{ url: runtime.url, description: runtime.environment }],
+    'x-minacontrol': { webUrl: runtime.webUrl },
+  };
+}
