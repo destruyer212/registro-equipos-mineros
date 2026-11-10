@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
-  Activity, AlertCircle, ArrowRight, ArrowUpRight, Bell, ChevronDown, CircleCheck, Clock3,
+  Activity, AlertCircle, ArrowRight, ArrowUpRight, ChevronDown, CircleCheck, Clock3,
   ClipboardList, Ellipsis, Gauge, History, LayoutDashboard, Pencil, Plus, Search,
   ShieldCheck, Truck, Wrench, X, Trash2, Layers3, Drill,
 } from 'lucide-react';
@@ -71,45 +71,6 @@ function EquipmentIdentity({ item }) {
   </>;
 }
 
-function MaintenanceAlerts({ items, offline, onOpen }) {
-  const dialog = useRef(null);
-  const pending = items.filter(({ status }) => status === 'due');
-  const count = pending.length;
-  const summary = count === 1 ? '1 equipo requiere mantenimiento' : `${count} equipos requieren mantenimiento`;
-
-  return <>
-    <button type="button" className="maintenance-fab" aria-haspopup="dialog" aria-controls="maintenance-alerts"
-      aria-label={`Alertas de mantenimiento: ${summary}`} onClick={() => dialog.current.showModal()}>
-      <Bell size={19} /><span>Alertas</span><span className="maintenance-count" aria-hidden="true">{count}</span>
-    </button>
-    <dialog ref={dialog} id="maintenance-alerts" className="maintenance-dialog" aria-labelledby="maintenance-alerts-title">
-      <div className="dialog-heading">
-        <div><span className="dialog-eyebrow">CONTROL DE FLOTA</span><h2 id="maintenance-alerts-title">Alertas de mantenimiento</h2></div>
-        <button type="button" className="icon-button" onClick={() => dialog.current.close()} aria-label="Cerrar alertas"><X size={21} /></button>
-      </div>
-      <div className="dialog-body">
-        {offline && <p>Alertas según el último inventario guardado.</p>}
-        <p>{count ? summary + '.' : 'Todos los equipos están dentro de su intervalo de mantenimiento.'}</p>
-        {count > 0 && <ul className="maintenance-list">
-          {pending.map((item) => (
-            <li key={item.id}>
-              <button type="button" className="equipment-link" onClick={() => {
-                dialog.current.close();
-                onOpen(item);
-              }}>
-                <EquipmentIdentity item={item} />
-                <span className="maintenance-hours">{item.remainingHours < 0
-                  ? `+${number.format(-item.remainingHours)} h` : 'Intervalo alcanzado'}</span>
-                <ArrowRight size={16} aria-hidden="true" />
-              </button>
-            </li>
-          ))}
-        </ul>}
-      </div>
-    </dialog>
-  </>;
-}
-
 function Sidebar({ view, onChange }) {
   return (
     <aside className="sidebar">
@@ -139,7 +100,7 @@ function Overview({ list, loading, onFilter }) {
       <section className="hero" aria-labelledby="hero-title">
         <div className="hero-copy">
           <span className="eyebrow"><span /> CONTROL DE FLOTA</span>
-          <h2 id="hero-title">Cada equipo cuenta.</h2>
+          <h2 id="hero-title">Cada hora cuenta.</h2>
           <p>Supervisa el uso de tu flota y programa el próximo servicio según el horómetro de cada equipo.</p>
           <button onClick={() => onFilter('due')}>Ver equipos que requieren servicio <ArrowRight size={16} /></button>
         </div>
@@ -408,10 +369,6 @@ function App() {
     table.current?.scrollIntoView({ behavior: motion ? 'auto' : 'smooth', block: 'start' });
   }
 
-  function openEquipment(entry) {
-    setModal({ mode: 'detail', id: entry.id });
-  }
-
   async function save(mode, selected, values) {
     if (offline || !navigator.onLine) throw new Error('Conéctate para guardar cambios.');
     let result;
@@ -464,7 +421,7 @@ function App() {
           {view === 'overview' && <Overview list={inventory.items} loading={inventory.loading || Boolean(inventory.problem)} onFilter={filterByStatus} />}
           <EquipmentTable items={inventory.items} types={inventory.types} filters={filters}
             updateFilters={(changes) => setFilters((current) => ({ ...current, ...changes }))}
-            onOpen={openEquipment} loading={inventory.loading}
+            onOpen={(entry) => setModal({ mode: 'detail', id: entry.id })} loading={inventory.loading}
             problem={inventory.problem} retry={() => { setInventory((current) => ({ ...current, loading: true, problem: '' })); setAttempt(attempt + 1); }}
             tableRef={table} view={view} />
           <footer className="page-footer">
@@ -475,7 +432,6 @@ function App() {
       </div>
       {modal && (modal.mode === 'add' || item) && <EquipmentDialog mode={modal.mode} item={item} types={inventory.types} offline={offline || Boolean(inventory.problem)} onMode={(mode) => setModal({ ...modal, mode })}
         onClose={() => setModal(null)} onSave={save} />}
-      {!inventory.loading && !inventory.problem && <MaintenanceAlerts items={inventory.items} offline={offline} onOpen={openEquipment} />}
       <div className="toast-region" aria-live="polite">{notice && <span className="toast"><CircleCheck size={19} />{notice}</span>}</div>
     </div>
   );
