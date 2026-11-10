@@ -124,6 +124,6 @@ node --test frontend/test/pwa.browser.test.mjs
 
 ## Entrega
 
-Incluye el enlace al repositorio público, las URLs HTTPS de la web y de la API, y el video de hasta tres minutos. El [plan y guion](docs/entrega.md) recoge los criterios de aceptación y la secuencia para grabarlo.
+Incluye el enlace al repositorio público, las URLs HTTPS de la web y de la API, y el video de hasta tres minutos.
 
 **Uso de IA.** Se usó OpenAI Codex para apoyar la implementación, diseño visual, pruebas y documentación. La marca y los SVG de MinaControl son originales para la demostración.

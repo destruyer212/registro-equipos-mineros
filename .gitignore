@@ -9,3 +9,4 @@ dist/
 .deploy.lock/
 .deploy-state/
 coverage/
+/docs/entrega.md
