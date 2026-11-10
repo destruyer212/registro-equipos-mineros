@@ -29,7 +29,8 @@ La tabla de criterios de aceptación delimita el alcance. El siguiente registro 
 | --- | --- |
 | DNS o HTTPS demoran | Configurar ambos dominios desde el primer día y comprobarlos desde fuera de la red del servidor. |
 | El cambio parece publicado pero el navegador conserva la versión anterior | Verificar el SHA de la web y la API, y recargar en una ventana privada. |
-| Las migraciones fallan o se ejecutan dos veces | Usar transacciones, bloqueo e historial de migraciones. Verificar un segundo despliegue con datos existentes. |
+| Las migraciones fallan o se ejecutan dos veces | Usar transacciones, bloqueo e historial de migraciones. GitHub Actions provoca un fallo SQL y comprueba que la versión activa y sus datos sigan disponibles. |
+| La versión nueva falla al arrancar | Restaurar las imágenes y los manifiestos verificados. Comprobar las URLs anteriores y devolver código 1 para el intento fallido. |
 | El alcance se extiende | Cerrar primero los criterios P0 y reservar el último día para grabar y entregar. |
 
 ## Guion de video (2 min 40 s)

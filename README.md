@@ -1,5 +1,7 @@
 # MinaControl
 
+[![Pruebas de MinaControl](https://github.com/destruyer212/registro-equipos-mineros/actions/workflows/ci.yml/badge.svg)](https://github.com/destruyer212/registro-equipos-mineros/actions/workflows/ci.yml)
+
 Portal de inventario y mantenimiento preventivo de equipos mineros. La web y la API son servicios independientes y PostgreSQL conserva las lecturas y los servicios registrados.
 
 ## Inicio rápido
@@ -13,11 +15,12 @@ node deploy.mjs --local
 En la primera ejecución crea un `.env` local con una contraseña aleatoria y activa seis equipos de demostración. Abre [el portal](http://localhost:4173) y verifica [el estado de la API](http://localhost:4180/health). Si necesitas otros puertos, configúralos en `.env` antes de ejecutar el comando.
 
 ```text
+npm ci --prefix backend
 npm --prefix backend test
 docker stop minacontrol-local-web-1 minacontrol-local-api-1 minacontrol-local-db-1
 ```
 
-Ejecuta las pruebas antes de detener el entorno. La prueba de integración crea un equipo temporal en la API activa, comprueba el ciclo y lo retira del inventario. Usa la base local de demostración. El comando de parada conserva el volumen de PostgreSQL.
+Ejecuta las pruebas contra la API local activa. La prueba de integración crea un equipo temporal, comprueba el ciclo y lo retira del inventario. El comando de parada conserva el volumen de PostgreSQL.
 
 ## Cómo funciona
 
@@ -66,9 +69,27 @@ Para crear un equipo se envían `code`, `type` y `hours`. Los tipos son `truck`,
 node deploy.mjs
 ```
 
-El comando valida la configuración y el DNS, sincroniza el código publicado con Git, construye las dos imágenes, aplica las migraciones pendientes y publica ambos servicios. Comprueba la página principal, `/release.json` en la web y `/health` en la API. Los dos servicios deben devolver el SHA del commit desplegado. Si un paso falla, imprime la etapa y sale con código distinto de cero. Puedes repetirlo con la misma base. El historial de migraciones evita reejecutar SQL ya aplicado.
+El comando valida la configuración y el DNS, sincroniza el código publicado con Git, construye imágenes con etiquetas únicas, aplica las migraciones pendientes y publica los servicios. Comprueba la página principal, `/release.json` en la web, `/health` y la consulta del inventario en la API. La web y la API deben devolver el SHA del commit desplegado. Puedes repetirlo con la misma base. El historial de migraciones evita reejecutar SQL ya aplicado.
 
-El portal es una demostración pública con operaciones de escritura abiertas. Usa una base aislada y datos ficticios. La emisión de certificados depende del DNS y de la accesibilidad del servidor. Las migraciones se ejecutan antes de sustituir los contenedores de aplicación. Diseña las migraciones futuras para que sean compatibles con la versión que todavía esté sirviendo tráfico.
+El portal es una demostración pública con operaciones de escritura abiertas. Usa una base aislada y datos ficticios. La emisión de certificados depende del DNS y de la accesibilidad del servidor.
+
+### Rollback automático
+
+Después del primer despliegue verificado, el servidor guarda en `.deploy-state/` las etiquetas y los manifiestos de la versión activa. Si una versión nueva falla después de que empieza a publicar servicios, el comando restaura la web, la API y, en producción, el proxy. Después vuelve a comprobar las URLs de esa versión. El intento fallido devuelve código `1` incluso cuando la restauración es correcta.
+
+Si falla una migración, PostgreSQL revierte esa transacción antes de que se sustituyan los servicios. Si la migración ya terminó y el fallo ocurre después, el rollback restaura los servicios y conserva el esquema y los datos. Las migraciones futuras deben ser compatibles con la versión que sigue sirviendo tráfico. Mantén el directorio de estado y las imágenes de la última versión verificada en el servidor.
+
+## Pruebas automatizadas
+
+GitHub Actions ejecuta las pruebas en cada push a `main` y en los pull requests. El entorno de prueba tiene su propio proyecto Compose, puertos y volumen de PostgreSQL.
+
+```text
+npm ci --prefix backend
+node --test backend/test/equipment.unit.test.js
+node --test tests/deploy.integration.test.mjs
+```
+
+La prueba de despliegue verifica Swagger, el flujo REST, la persistencia entre versiones, una migración que falla dentro de una transacción, la restauración de las imágenes previas ante una API defectuosa y un despliegue posterior con la corrección.
 
 ## Entrega
 

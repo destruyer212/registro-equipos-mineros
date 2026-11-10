@@ -1,5 +1,6 @@
 services:
   gateway:
+    image: ${COMPOSE_PROJECT_NAME}-gateway:${IMAGE_TAG:?Configura IMAGE_TAG con deploy.mjs}
     build: ./deploy
     environment:
       WEB_HOST: ${WEB_HOST:?Configura WEB_HOST}

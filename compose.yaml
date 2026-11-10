@@ -15,6 +15,7 @@ services:
     restart: unless-stopped
 
   api:
+    image: ${COMPOSE_PROJECT_NAME}-api:${IMAGE_TAG:?Configura IMAGE_TAG con deploy.mjs}
     build: ./backend
     environment:
       DATABASE_URL: postgres://minacontrol:${POSTGRES_PASSWORD}@db:5432/minacontrol
@@ -33,6 +34,7 @@ services:
     stop_grace_period: 15s
 
   web:
+    image: ${COMPOSE_PROJECT_NAME}-web:${IMAGE_TAG:?Configura IMAGE_TAG con deploy.mjs}
     build:
       context: ./frontend
       args:
