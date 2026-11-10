@@ -22,6 +22,7 @@ app.use(express.json({ limit: '12kb' }));
 
 const specification = createOpenapi(runtimeDocumentation());
 const docsDirectory = fileURLToPath(new URL('./docs/', import.meta.url));
+app.get('/', (_request, response) => response.redirect('/docs/'));
 app.get('/openapi.json', (_request, response) => response.json(specification));
 app.use('/docs', express.static(docsDirectory), swaggerUi.serveFiles());
 
