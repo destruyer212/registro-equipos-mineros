@@ -1,5 +1,6 @@
 const origin = (import.meta.env.VITE_API_URL || 'http://localhost:4180').replace(/\/$/, '');
 export const apiDocsUrl = `${origin}/docs/`;
+export const usesRender = new URL(origin, window.location.origin).hostname.endsWith('.onrender.com');
 
 export class ApiUnavailableError extends Error {}
 
@@ -35,9 +36,22 @@ async function request(path, { method = 'GET', body, signal } = {}) {
 }
 
 const base = '/api/v1/equipment';
+
+export async function loadInventory(signal, waitForStartup) {
+  const deadline = Date.now() + 85_000;
+  while (true) {
+    try {
+      return await Promise.all([request(base, { signal }), request('/api/v1/equipment-types', { signal })]);
+    } catch (error) {
+      if (!usesRender || !waitForStartup || signal.aborted ||
+          !(error instanceof ApiUnavailableError) || Date.now() >= deadline) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 3000));
+      if (signal.aborted) throw error;
+    }
+  }
+}
+
 export const api = {
-  list: (signal) => request(base, { signal }),
-  types: (signal) => request('/api/v1/equipment-types', { signal }),
   history: (id, signal) => request(`${base}/${id}/maintenance`, { signal }),
   create: (body) => request(base, { method: 'POST', body }),
   update: (id, body) => request(`${base}/${id}`, { method: 'PATCH', body }),

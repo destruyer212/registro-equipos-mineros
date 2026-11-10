@@ -5,7 +5,7 @@ import {
   ClipboardList, Ellipsis, Gauge, History, LayoutDashboard, Pencil, Plus, Search,
   ShieldCheck, Truck, Wrench, X, Trash2, Layers3, Drill,
 } from 'lucide-react';
-import { api, apiDocsUrl, ApiUnavailableError } from './api.js';
+import { api, apiDocsUrl, ApiUnavailableError, loadInventory, usesRender } from './api.js';
 import { InstallApp, usePwa } from './pwa.jsx';
 import './styles.css';
 
@@ -144,7 +144,9 @@ function EquipmentTable({ items, types, filters, updateFilters, onOpen, loading,
           <option value="all">Estado: todos</option>{Object.entries(statusNames).map(([key, label]) => <option value={key} key={key}>{label}</option>)}
         </select><ChevronDown size={15} /></label>
       </div>
-      {loading ? <p className="table-message" role="status">Consultando equipos…</p> : problem ?
+      {loading ? <p className="table-message" role="status">{usesRender
+        ? 'Conectando con la API. Si estaba en reposo, puede tardar cerca de un minuto.'
+        : 'Consultando equipos…'}</p> : problem ?
         <div className="table-message"><p role="alert">{problem}</p><button className="secondary" onClick={retry}>Reintentar</button></div> :
         filtered.length === 0 ? <div className="table-message"><Search size={22} /><strong>{items.length ? 'Sin coincidencias' : 'El inventario está vacío'}</strong>
           <p>{items.length ? 'Prueba con otro código o filtro.' : 'Registra un equipo para empezar a controlar sus horas.'}</p>
@@ -292,7 +294,7 @@ function App() {
     const revision = inventoryRevision.current;
     const current = () => !controller.signal.aborted && revision === inventoryRevision.current;
     const request = navigator.onLine
-      ? Promise.all([api.list(controller.signal), api.types(controller.signal)])
+      ? loadInventory(controller.signal, !readSnapshot())
       : Promise.reject(new Error('No hay conexión para cargar el inventario.'));
     request
       .then(([items, types]) => {
