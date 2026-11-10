@@ -24,10 +24,13 @@ try {
       console.log(`Migración aplicada: ${file}`);
     }
 
-    if (process.env.DEMO_DATA === 'true' && !applied.has('demo-v1')) {
-      await client.query(await readFile(new URL('./demo.sql', import.meta.url), 'utf8'));
-      await client.query("INSERT INTO schema_migrations (name) VALUES ('demo-v1')");
-      console.log('Datos de demostración cargados.');
+    if (process.env.DEMO_DATA === 'true') {
+      for (const [name, file] of [['demo-v1', './demo.sql'], ['demo-v2', './demo-maintenance.sql']]) {
+        if (applied.has(name)) continue;
+        await client.query(await readFile(new URL(file, import.meta.url), 'utf8'));
+        await client.query('INSERT INTO schema_migrations (name) VALUES ($1)', [name]);
+        console.log(`Datos de demostración cargados: ${name}.`);
+      }
     }
   });
   console.log('Esquema de PostgreSQL al día.');

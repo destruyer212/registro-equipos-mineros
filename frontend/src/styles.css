@@ -221,7 +221,26 @@ dialog::backdrop { background: #14251fcc; }
 .history-dot { flex: none; width: 8px; height: 8px; margin-top: 4px; background: #568c68; border-radius: 50%; }
 .dialog-body .form-error { display: flex; align-items: start; gap: 7px; padding: 8px; color: #912e27; background: #fcebe9; border-radius: 6px; font-size: 12px; }
 .form-error svg { flex: none; }
-.toast-region { position: fixed; right: 15px; bottom: 15px; z-index: 3; pointer-events: none; }
+.maintenance-fab {
+  position: fixed; right: 17px; bottom: 17px; z-index: 3; display: inline-flex; align-items: center; gap: 8px;
+  min-height: 48px; padding: 8px 12px; border: 1px solid #315a48; border-radius: 999px; background: #183d2c;
+  color: #fff; box-shadow: 0 8px 24px #123a304d; font-size: 13px; font-weight: 750;
+}
+.maintenance-fab:hover { background: #24553d; }
+.maintenance-count {
+  display: grid; min-width: 25px; min-height: 25px; padding: 0 5px; place-items: center;
+  border-radius: 999px; background: var(--lime); color: #183d2c; font-variant-numeric: tabular-nums;
+}
+.maintenance-dialog { position: fixed; inset: auto 17px 76px auto; margin: 0; max-width: 430px; max-height: min(65dvh, 480px); }
+.maintenance-dialog::backdrop { background: #14251f40; }
+.maintenance-list { display: grid; gap: 7px; margin: 0; padding: 0; list-style: none; }
+.maintenance-list .equipment-link {
+  width: 100%; min-height: 48px; gap: 8px; padding: 6px; border: 1px solid var(--line); border-radius: 8px;
+}
+.maintenance-list .equipment-link:hover { background: #f3f7f4; }
+.maintenance-list .equipment-link > svg { flex: none; }
+.maintenance-hours { margin-left: auto; color: #933c2f; font-size: 11px; font-weight: 720; text-align: right; }
+.toast-region { position: fixed; right: 15px; bottom: 76px; z-index: 3; pointer-events: none; }
 .toast { display: flex; align-items: center; gap: 8px; padding: 12px 15px; border-radius: 8px; background: #173d2c; color: #fff; box-shadow: 0 7px 24px #123a3055; font-size: 13px; }
 .toast svg { color: var(--lime); }
 
@@ -250,7 +269,7 @@ dialog::backdrop { background: #14251fcc; }
   .sidebar nav button { justify-content: center; min-height: 46px; gap: 5px; margin: 0; padding: 3px 4px; font-size: 11px; }
   .sidebar nav button svg { width: 17px; height: 17px; flex: none; }
   .topbar { min-height: 43px; padding-inline: 13px; }
-  main { padding: 18px max(13px, env(safe-area-inset-right)) calc(82px + env(safe-area-inset-bottom)) max(13px, env(safe-area-inset-left)); }
+  main { padding: 18px max(13px, env(safe-area-inset-right)) calc(128px + env(safe-area-inset-bottom)) max(13px, env(safe-area-inset-left)); }
   .hero { min-height: 167px; padding: 15px; }
   .hero img { width: 49%; right: 0; opacity: .44; }
   .hero-reference { display: none; }
@@ -271,7 +290,9 @@ dialog::backdrop { background: #14251fcc; }
   .dialog-heading .icon-button, .detail-actions .icon-button { width: 44px; height: 44px; }
   .search, .select, .select select { min-height: 44px; }
   .search input, .select select, .dialog-body input, .dialog-body select, .dialog-body textarea { font-size: 16px; }
-  .toast-region { bottom: calc(72px + env(safe-area-inset-bottom)); }
+  .maintenance-fab { right: max(13px, env(safe-area-inset-right)); bottom: calc(70px + env(safe-area-inset-bottom)); }
+  .maintenance-dialog { right: max(13px, env(safe-area-inset-right)); bottom: calc(129px + env(safe-area-inset-bottom)); }
+  .toast-region { bottom: calc(129px + env(safe-area-inset-bottom)); }
 }
 @media (max-width: 460px) {
   .sidebar nav button { flex-direction: column; gap: 4px; padding-block: 5px; text-align: center; font-size: 10px; }
