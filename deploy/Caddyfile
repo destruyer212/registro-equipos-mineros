@@ -1,0 +1,11 @@
+{
+    admin off
+}
+
+{$WEB_HOST} {
+    reverse_proxy web:8080
+}
+
+{$API_HOST} {
+    reverse_proxy api:3000
+}

@@ -1,0 +1,49 @@
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: minacontrol
+      POSTGRES_DB: minacontrol
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Configura POSTGRES_PASSWORD}
+    volumes:
+      - postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "minacontrol", "-d", "minacontrol"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  api:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgres://minacontrol:${POSTGRES_PASSWORD}@db:5432/minacontrol
+      WEB_ORIGIN: ${WEB_URL:?Configura WEB_URL con deploy.mjs}
+      DEMO_DATA: ${DEMO_DATA:-false}
+      RELEASE_ID: ${RELEASE_ID:?Configura RELEASE_ID con deploy.mjs}
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/health').then(r=>{if(!r.ok)process.exitCode=1}).catch(()=>process.exitCode=1)"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+    stop_grace_period: 15s
+
+  web:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: ${API_URL:?Configura API_URL con deploy.mjs}
+        RELEASE_ID: ${RELEASE_ID:?Configura RELEASE_ID con deploy.mjs}
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/release.json"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    restart: unless-stopped
+
+volumes:
+  postgres:

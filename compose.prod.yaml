@@ -1,0 +1,17 @@
+services:
+  gateway:
+    build: ./deploy
+    environment:
+      WEB_HOST: ${WEB_HOST:?Configura WEB_HOST}
+      API_HOST: ${API_HOST:?Configura API_HOST}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - gateway_data:/data
+      - gateway_config:/config
+    restart: unless-stopped
+
+volumes:
+  gateway_data:
+  gateway_config:
