@@ -40,7 +40,7 @@ La tabla de criterios de aceptación delimita el alcance. El siguiente registro 
 | 0:00–0:20 | Abrir la URL pública y mostrar el título actual. | «MinaControl registra equipos y calcula su siguiente servicio con el horómetro y el último mantenimiento». |
 | 0:20–0:45 | Abrir un camión que requiere mantenimiento. Mostrar el historial y, si da tiempo, registrar un servicio. | «El servicio queda guardado. El total del horómetro se mantiene y el ciclo vuelve a cero». |
 | 0:45–1:10 | Cambiar el titular de la portada en `frontend/src/main.jsx`, hacer commit y push. | «Voy a cambiar este texto y publicar el commit en GitHub». |
-| 1:10–2:10 | Ejecutar `node deploy.mjs` desde el servidor. Mostrar las cuatro etapas y el resultado. | «El comando construye ambos servicios, aplica migraciones y verifica el mismo commit en las dos URLs». |
+| 1:10–2:10 | Ejecutar `node deploy-hosted.mjs` desde la carpeta del repositorio. Mostrar las cuatro etapas y el resultado. | «El comando publica el frontend en Vercel y la API en Render, aplica migraciones y verifica el mismo commit en las dos URLs». |
 | 2:10–2:40 | Recargar la web, enseñar el título nuevo y abrir `/health`. | «La web ya tiene el cambio. La API confirma la versión y que PostgreSQL está disponible». |
 
-Antes de grabar, ensaya con el servidor y mide el tiempo de construcción. Deja las dependencias en caché con un despliegue previo. Mantén visibles el comando, su resultado y la recarga final. Para la prueba de negocio puedes crear un camión a 499 h, editarlo a 500 h y registrar el servicio. Usa datos ficticios durante la grabación.
+Antes de grabar, abre la API para que Render salga del reposo y ensaya el despliegue para medir su duración. Mantén visibles el comando, su resultado y la recarga final. Para la prueba de negocio puedes crear un camión a 499 h, editarlo a 500 h y registrar el servicio. Usa datos ficticios durante la grabación.

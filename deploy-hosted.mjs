@@ -15,16 +15,19 @@ let stage = 'configuración';
 let locked = false;
 
 function run(command, args, cwd) {
-  const result = spawnSync(command, args, {
+  // The Windows Vercel shim needs a shell. Its arguments are fixed or validated below.
+  const windowsShim = command === 'vercel' && process.platform === 'win32';
+  const result = spawnSync(windowsShim ? [command, ...args].join(' ') : command, windowsShim ? [] : args, {
     cwd,
-    shell: command === 'vercel' && process.platform === 'win32',
-    stdio: ['ignore', 'pipe', 'inherit'],
+    shell: windowsShim,
+    stdio: ['ignore', 'pipe', 'pipe'],
     encoding: 'utf8',
     timeout: 360_000,
   });
+  if (result.stderr) process.stderr.write(result.stderr);
   if (result.error) throw result.error;
   if (result.status !== 0) throw new Error(`${command} terminó con código ${result.status}.`);
-  return result.stdout.trim();
+  return args[0] === 'deploy' ? result.stdout + result.stderr : result.stdout.trim();
 }
 
 function providerOrigin(value, domain, name) {
@@ -129,7 +132,9 @@ async function deploy() {
     console.log(`[1/4] Construyendo frontend en Vercel (${release.slice(0, 12)})`);
     const candidate = vercel('deploy', '--prod', '--skip-domain', '--yes',
       '--build-env', `VITE_API_URL=${api}`, '--build-env', `MINACONTROL_RELEASE=${release}`);
-    const deployment = providerOrigin(candidate, 'vercel.app', 'URL de despliegue');
+    const deploymentUrls = new Set(candidate.match(/https:\/\/[a-z0-9][a-z0-9-]*\.vercel\.app\b/g));
+    if (deploymentUrls.size !== 1) throw new Error('Vercel no devolvió una URL de despliegue inequívoca.');
+    const deployment = providerOrigin([...deploymentUrls][0], 'vercel.app', 'URL de despliegue');
 
     stage = 'despliegue y migración del backend en Render';
     console.log('[2/4] Publicando la API en Render y esperando la migración');
